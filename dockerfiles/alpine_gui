@@ -1,0 +1,31 @@
+FROM --platform=linux/i386 docker.io/i386/debian:buster
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Point APT to the archived mirrors (Buster is EOL)
+RUN echo "deb [trusted=yes] http://archive.debian.org/debian buster main contrib non-free" \
+  > /etc/apt/sources.list && \
+  echo "deb [trusted=yes] http://archive.debian.org/debian-security buster/updates main" \
+  >> /etc/apt/sources.list
+
+# Install GUI components and development tools
+RUN apt-get update && apt-get -y install xorg lightdm i3 xterm gedit \
+	gcc g++ make python3 python3-pip git curl wget vim nano nodejs ruby \
+	build-essential ca-certificates openssl openssh-client less
+
+# Add users
+RUN useradd -m -s /bin/bash user && echo 'user:password' | chpasswd
+RUN echo 'root:password' | chpasswd
+
+# Configure lightdm to start i3
+RUN sed -i "s/#autologin-user=/autologin-user=user/g" /etc/lightdm/lightdm.conf && \
+    sed -i "s/#autologin-session=/autologin-session=i3/g" /etc/lightdm/lightdm.conf
+
+# Copy examples for user
+COPY --chown=user:user ./examples /home/user/examples
+RUN chmod -R +x /home/user/examples/lua
+
+# Set environment variables (extracted by Webvm)
+WORKDIR /home/user/
+ENV HOME="/home/user" TERM="xterm" USER="user" SHELL="/bin/bash" EDITOR="vim" LANG="C.UTF-8"
+
+CMD [ "/bin/sh" ]
